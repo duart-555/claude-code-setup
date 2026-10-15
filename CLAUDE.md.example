@@ -1,0 +1,403 @@
+# Global Instructions
+
+Portable global instructions for Claude Code: how to work, how memory is organised, which tool or
+agent to reach for. Nothing here is specific to one person, machine or project. Keep it that way:
+a status log, hostnames or pending tasks do not belong in a file that loads in full every session;
+put those in memory or project notes.
+
+## Memory: four layers, one owner each
+
+Read this before touching anything memory-shaped. Several tools overlap; each owns exactly one
+layer, and failures come from letting them bleed into each other.
+
+| Layer | Question it answers | Lives in | Loaded | Written by |
+|---|---|---|---|---|
+| **1 Instructions** | How do I work here? | `CLAUDE.md`, `.claude/rules/` | every session, in full | the user |
+| **2 Durable facts** | What did we learn? What was decided? What trap cost a day? | `~/.claude/projects/<repo>/memory/*.md` -> `MEMORY.md` | index at start, files on demand | the agent, curated, plus an automatic backstop |
+| **3 Project state** | Where does this project stand right now? | `.planning/`, committed in the repo | on demand | phase commands (GSD) |
+| **4 Session activity** | What just happened? What was I doing before compaction? | claude-mem observations; context-mode session guide | injected at start / after compaction | automatic |
+
+**The boundary rule between 2 and 3, which stops both from rotting:**
+
+> Layer 3 is mutable and always current: it gets overwritten. Layer 2 is immutable and dated: it
+> gets appended. "The task table is empty" is *state*. "Task state moved to Postgres
+> because JSON files lost writes under concurrency" is a *fact*. If a sentence will be false next
+> week, it belongs in `.planning/STATE.md` and never in a memory file.
+
+**Layer 2 has a deterministic backstop, not just judgment in the moment.** A `SessionEnd` hook
+(`~/.claude/hooks/memory-auto-capture.mjs`, registered globally, so it covers every project with
+no per-project setup) runs a cheap `claude -p --model haiku` pass at the end of every session
+through the existing subscription. It re-reads the transcript against this exact contract and
+writes anything durable the live session did not capture. It is silent when there is nothing to
+write, which is most sessions. Assume it is running, and still write a fact yourself when you are
+already sure of it; the hook is a safety net, not a reason to skip.
+
+`PreCompact` gets the same pass, and `PostToolUse` (Write/Edit/MultiEdit) adds a 15-minute
+throttled safety net so a hard crash loses at most one window. All three share a 2-minute
+cross-trigger debounce, added after a stray process restarted `claude` every minute or so and
+fired `SessionEnd` dozens of times with nothing to write.
+
+Layer 2 sits on Claude Code's own auto-memory directory, so it loads through the native path.
+Three consequences that are easy to get wrong:
+
+- **The limit is 200 lines OR 25 KB, whichever comes first**, not bytes alone. The generator
+  enforces both, measuring what actually loads (frontmatter and block comments stripped first).
+- **The corpus is keyed on the git repository, not the cwd**, so every worktree and subdirectory
+  of one repo shares a single corpus. Resolve the root with `git rev-parse --git-common-dir`, not
+  `--show-toplevel`, which returns the worktree and silently forks the corpus in two.
+- **Never disable auto memory.** `MEMORY.md` loads *because* that feature is on. Turning it off to
+  "avoid the overlap" switches off the entire memory system.
+
+Concurrent sessions are safe by construction: `MEMORY.md` is **derived, never appended**, so two
+sessions regenerating it converge instead of clobbering. Keep it that way: one fact per file,
+named `<topic>-<YYYY-MM-DD>.md`.
+
+## Understand the goal before building: the 95% rule
+
+Before a non-trivial implementation (skip for one-line fixes, direct questions, or an obviously
+complete spec), silently self-assess: do I understand the full intent, meaning the literal ask,
+the implied requirements, the edge cases, and how it connects to the existing codebase, to better
+than 95% confidence?
+
+- **>95%**: proceed without asking. Do not manufacture questions.
+- **<=95%**: ask targeted questions before writing code. Be specific about what is uncertain, and
+  surface what the user probably did not think to mention (related systems, edge cases, what
+  "done" means) instead of silently guessing.
+
+A small obvious task at 98% needs zero questions; an underspecified "build me X" needs them even
+if it sounds simple.
+
+## Effort triage: how much process a task deserves
+
+- **Trivial** (typo, one-line fix, direct question): handle directly, no subagent overhead.
+- **Moderate, well-scoped** (a few files, no real unknowns): do it inline, then run the matching
+  reviewer.
+- **New feature or subsystem** (multiple files, real design decisions, real test surface): plan
+  first (`planner`), then TDD (`tdd-guide`), then review. Write the plan down if it spans more than
+  one session.
+
+**Escalate, do not force a bad fit.** If a task reveals more complexity than judged, stop, say so
+and escalate. The reverse holds too: drop the ceremony when a task turns out trivial.
+
+### When GSD is the right lane
+
+GSD owns **layer 3** (`.planning/`, committed) and runs research, planning and execution in
+**fresh-context subagents** so the main session stays lean. That is the remedy for context rot.
+Reach for it when the work is multi-session or multi-phase, or when "where did we leave off" would
+otherwise be answered by scrolling:
+
+- `/gsd-onboard`: once per repo, to create `.planning/` from an existing codebase
+- `/gsd-plan-phase` -> `/gsd-execute-phase` -> `/gsd-verify-work`: a feature spanning sessions
+- `/gsd-progress`: "where does this stand", answered from committed state, not memory
+
+Not for a one-file fix, a direct question, or anything the triage above calls trivial or moderate.
+Its bookkeeping costs more than it returns there. Low usage count measured onboarding, not value:
+a repo that was never onboarded cannot fire it.
+
+### GSD vs superpowers: not competitors
+
+|  | GSD | superpowers |
+|---|---|---|
+| Question | Where does this project stand, and what is next? | How do I do this task well, right now? |
+| Unit | a phase, spanning sessions | a single task, inside one session |
+| Leaves behind | files in `.planning/`, committed | nothing; it changes how you work |
+| Reach for it when | work outlives one session | you are about to debug, plan, review, or claim done |
+
+GSD is machinery. superpowers is discipline. A one-file bug fix needs no `.planning/` phase but
+absolutely needs `systematic-debugging` and `verification-before-completion`. Disciplines worth
+holding even without invoking the skill:
+
+- **verification-before-completion**: no completion claims without fresh verification evidence. If
+  you have not run the command in this message, you cannot say it passes.
+- **systematic-debugging**: find the root cause. A random fix that makes the symptom go away is the
+  expensive path.
+- **receiving-code-review**: verify the claim before implementing it; agreement is not rigour.
+
+These are standards to hold, not rituals to perform. Do not invoke a skill to raise a number, and
+ignore any plugin framing that says to invoke a skill before every response: that is what makes a
+whole set read as noise.
+
+### Delegated is not done: verify before you tabulate
+
+A subagent's "required changes", "next steps" or "proposed values" are a **to-do list**. They say
+what it recommends, not what exists. Its summary of what it built is a claim about a file you have
+not read.
+
+**Before any of these, verify each line against the code:**
+
+1. writing a status table, a "what shipped" list, or a session summary;
+2. marking a task complete, or telling the user a stage is finished;
+3. answering "did we do X?" about anything earlier in the session.
+
+Verification means one command whose output you can see: `grep` for the symbol, `wc -l` the file,
+read the `package.json` key. Not "I remember adding it".
+
+**The trap:** an agent reports "I built X and recorded the wiring in REQUIRED-CHANGES.md". X
+exists; the wiring does not. Both halves arrive in one message and only one is done. In a
+four-agent batch, a status table written from recollection would have asserted four false things:
+an npm script never added, a devDependency never installed, a defect fixed in one caller but not
+another, and a file 150 lines longer than remembered. One `grep` each caught all four. The risk is
+highest right after a compaction, when a summary flattens "recommended" and "done" into the same
+past tense. This is a habit of checking, not a memory-corpus job.
+
+## Agent triage: which specialist, automatically
+
+Fire on the signal, no prompt needed:
+
+- Any `.tsx`/`.jsx` touched or React component logic -> `react-reviewer`
+- Any `.ts`/`.js` touched -> `typescript-reviewer`
+- Any `.py` touched -> `python-reviewer`
+- React/Next.js build failure -> `react-build-resolver`
+- Code just written or modified (general) -> `code-reviewer`
+- Auth, payments, user input, other security-sensitive code -> `security-reviewer`
+- SQL, migrations, schema or query changes -> `database-reviewer`
+- Architectural decision (new subsystem, data model, cross-cutting change) -> `architect`
+- New feature or bug fix -> `tdd-guide`
+- Complex or ambiguous feature needing a plan first -> `planner`
+- SEO, metadata, sitemap, structured data, Core Web Vitals -> `seo-specialist`
+- UI component, design system, accessibility -> `a11y-architect`
+- Silently-swallowed errors, bad fallbacks -> `silent-failure-hunter`
+- Work on this Claude Code setup itself (agents, skills, hooks, MCP) -> `harness-optimizer`
+
+**Model dial**: default to each agent's own declared `model:` tier. Escalate one invocation only
+when the change is unusually high-stakes. **These are triggers, not a quota**: a one-line edit does
+not need a reviewer, and most subagent calls should go to the two built-ins (`general-purpose`,
+`Explore`) unless a specific reviewer fits.
+
+## code-review-graph: auto-setup for new projects
+
+The CLI needs one-time per-project activation. When starting substantive work in a project with
+real source code and no `.code-review-graph/` directory, run without waiting to be asked:
+
+```
+code-review-graph install --platform claude-code
+code-review-graph build
+```
+
+Skip for throwaway scripts, single-file tasks, or tiny repos. Once built, its own hooks handle
+incremental updates and the pre-commit refresh.
+
+## MCP tool triage: which server, automatically
+
+Skills carry their own descriptions, so no per-skill rule is needed. MCP tools are just present in
+the tool list with no "notice and reach for me" instinct, which is why they need explicit rows.
+Extend this table, do not write new prose, and only add a row once the tool has proven itself.
+
+| Trigger | Tool | Notes |
+|---|---|---|
+| Library/framework/API usage, setup, version-specific behaviour | `context7` | `resolve-library-id` then `get-library-docs`. Skip for trivial or stdlib questions. |
+| UI/UX visual design, a component's look, "how do real apps solve this" | `mobbin` | Use a live reference instead of guessing. Skip for backend work. |
+| Cross-repo code question, "how does X work here", onboarding a repo | `greptile` + `gbrain` | Whichever answers faster. Greptile needs `index_repository` once per repo. |
+| Verifying a live page really renders or behaves as claimed | `playwright` | Run headless. |
+
+A rule works when it names a concrete trigger instead of ordering a tool to be used before
+everything.
+
+## Web: WebSearch / WebFetch by default, a crawler for four jobs
+
+Default to `WebSearch` and `WebFetch`. Reach for Crawl4AI (`md`, `crawl`, `html`, `screenshot`,
+`pdf`, `execute_js`, `ask`) only when the task needs one of:
+
+- a whole site or many pages crawled, not one page read
+- a JS-rendered page that a plain fetch returns as an empty shell
+- structured CSS/XPath/schema extraction, not a summary
+- a screenshot or PDF of a page
+
+It needs a local container; if unreachable, fall back to `WebFetch` and say so. `agent-reach`
+owns login-walled social platforms (X, Reddit, YouTube, LinkedIn, Instagram, ...) because it reuses
+the logged-in browser session; a headless crawler has no cookies for those and hits the same walls.
+Most web questions are one page or one search, so do not reach past a plain fetch without one of
+the four reasons above.
+
+## Memory: one file per fact, and never hand-edit the index
+
+`MEMORY.md` is a **generated file**. Hand-edits are erased on the next run, and worse, it is a
+read-modify-write on a shared file with no lock: with two sessions running, the slower writer
+silently erases the faster one's entry. The fact file survives but becomes unreachable from the
+only map anything has. Where a generic memory instruction says to add a pointer to `MEMORY.md`,
+do not.
+
+### How to record a memory
+
+1. **Write a NEW file** in the project's memory directory
+   (`~/.claude/projects/<cwd-with-non-alphanumerics-as-hyphens>/memory/`). Never edit `MEMORY.md`
+   and never edit another session's file.
+2. Name it `<topic>-<YYYY-MM-DD>.md`. The frontmatter `name` must equal the filename without
+   `.md`; the generator fails loudly if it does not.
+3. Fill the frontmatter contract:
+
+```yaml
+---
+name: payments-backups-2026-07-30       # == filename, minus .md
+title: Backups, 2026-07-30              # optional; shown in the index
+description: >-                         # THIS BECOMES THE INDEX LINE. Max 240 chars.
+  The one fact you would regret forgetting. Write it as the hook, not as a title.
+metadata:
+  type: project                         # user | feedback | project | reference
+  section: current                      # must exist in that project's sections.json
+  date: 2026-07-30                      # when the fact was established
+  verify_by: 2027-01-01                 # OPTIONAL, but use it for anything that rots
+  status: deployed                      # deployed | pushed-not-merged | committed-not-pushed
+                                        # | uncommitted | plan-only | superseded
+---
+```
+
+4. **Run the generator** from the project directory:
+
+```
+node ~/.claude/scripts/memory-index.mjs
+```
+
+   It rebuilds `MEMORY.md`, validates the corpus, flags anything past its `verify_by`, and refuses
+   to write an index large enough to stop being loaded. Fix whatever it reports; do not work
+   around it. `--check` validates without writing. In a project whose memories predate the
+   contract, the first run upgrades them in place and preserves everything written. The 240-char
+   limit is a per-section default a project's `sections.json` may raise (`{"id":"current",
+   "maxChars":400}`). If you change the generator, run its tests with explicit file names:
+   `node --test ~/.claude/scripts/*.test.mjs` (the bare directory form fails on Node 22).
+
+5. **Commit the memory directory**: `git -C <memory dir> add -A -- . && git commit -- .`. The
+   generator creates the repo on first run. The `-- .` is load-bearing: with no pathspec,
+   `add -A` stages the entire outer repo when the memory folder is nested inside a project.
+6. **Push, if the memory dir has an `origin`**:
+   `git -C <memory dir> remote get-url origin >/dev/null 2>&1 && git -C <memory dir> push || true`.
+   No remote is a normal no-op.
+
+### Where the memory folder can live
+
+- **Default, machine-local** (`~/.claude/projects/<repo>/memory/`): isolated, private, invisible
+  to other machines and to cloud sessions.
+- **In-repo** (`<repo>/.claude/memory/`): commits and pushes with the code, so a cloud session sees
+  it. The generator and hook detect that the folder is already inside another git working tree and
+  defer; they never create a second repo there (a nested `.git` inside a tracked directory is a
+  broken gitlink and silently stops tracking the files).
+- **Dedicated private repo per project**: the machine-local directory is already a git repo, so
+  giving it an `origin` and pushing is all it takes. Memory is then never only on one machine and
+  does not pollute code history.
+
+Choose the dedicated repo by default, and embed in-repo only when the project needs a cloud
+session to read and write memory.
+
+### Finding and retiring memories
+
+The index is capped on purpose, so the cold half is reached by search:
+
+```
+node ~/.claude/scripts/memory-index.mjs --search <query>   # every memory, archive included
+node ~/.claude/scripts/memory-index.mjs --audit            # corpus review packet
+```
+
+To retire a memory without losing it: `git mv <file> archive/`, then re-run the generator. The
+generator ignores `archive/`, so it costs no index bytes, but `--search` still reaches it.
+
+#### Search the corpus at these five moments
+
+The index is the half you get for free. The traps, dead ends and "we tried that" live in the files
+and archive, reachable only by asking. A corpus you only write to is not memory: one bug cost a
+long detour and a wrong diagnosis because a memory written weeks earlier already named the cause
+(a smooth-scroll library overriding programmatic scroll) and was never consulted.
+
+1. **Before the second attempt at any bug.** The first attempt is cheap; once one fails, ask the
+   corpus before running another experiment.
+2. **When a tool, test or library behaves in a way that surprises you.** Surprise is the signal
+   that someone already met this.
+3. **Before saying "this is a new problem" or re-deriving a root cause.**
+4. **Before re-running an audit, investigation or migration** that may have been done. Several
+   memories exist purely to say "do not redo this, it was disproven".
+5. **Before writing a new memory**, to edit the existing file instead. A correction is worth more
+   than a second memory that half-contradicts the first, and costs zero index bytes.
+
+Search ONE noun at a time (`ECONNRESET`, `deadlock`, `42P07`). It is a literal substring search: a
+two-word phrase matches only if those exact words are adjacent.
+
+#### The corpus speaks first when a command fails
+
+`~/.claude/hooks/memory-recall-on-failure.mjs` is wired to `PostToolUseFailure` (Bash). When a
+command fails it takes the distinctive words from the error, matches them against every memory
+including the archive, and injects at most 2 hits. What to preserve if you touch it:
+
+- **The description is the signal.** A term in the curated one-line description is a claim about
+  what the memory is for; the same term deep in a body is a coincidence. Description matches
+  qualify alone; body-only matches need two independent rare tokens.
+- **Silence is the default.** On realistic failures it surfaced the right memory for a migration
+  error and a connection-pool error, and said nothing for a plain test failure or a missing module.
+- Capped at 2, debounced an hour per memory, and harmless: it runs after the command already
+  failed and only appends text. Every fire is logged to `~/.claude/logs/memory-recall.log`; if it
+  fires constantly and is never relevant, delete it.
+
+#### Archiving happens on its own, and what it will not touch
+
+`~/.claude/scripts/memory-autoarchive.mjs` runs weekly over every project corpus. It exists
+because a warning at 17 KB is only a warning, and past the ceiling the index stops loading and
+**every** memory becomes unreachable at once: a cliff, not a slope. It acts only above 19 KB,
+stops at 15 KB, and **archives, never deletes**. It skips, whatever their size or age:
+
+- `status: uncommitted | plan-only | committed-not-pushed | pushed-not-merged` (live state nobody
+  can re-derive);
+- `type: user | feedback` (standing instructions do not go stale by ageing);
+- anything under 30 days;
+- anything with `pin: true` in its metadata.
+
+Use `pin: true` on a memory that is a standing reference rather than a record of work: a charter,
+a legal position, a rule. Ranking is oldest-first and cannot tell those from a settled batch
+record. Each run is one commit, so `git revert` undoes it whole; preview with
+`--dry-run --verbose`. After it runs, that corpus's `MEMORY.md` is stale until the generator runs
+again from inside the project.
+
+Run the `memory-audit` skill quarterly, or whenever two memories seem to disagree. It is the only
+thing that catches contradictions; `verify_by` catches age, not two memories that conflict from the
+day they are written. The SessionStart hook warns past 17 KB in *memories remaining* rather than
+bytes, because "about 13 more" is a deadline and "3.6 KB" is not.
+
+### Backing up: the corpus cannot be re-derived
+
+Code is on a remote and the database is backed up; decisions, traps and underivable status exist
+only in these files.
+
+```
+node ~/.claude/scripts/memory-backup.mjs           # every project, one encrypted object
+node ~/.claude/scripts/memory-restore-verify.mjs   # the drill; exits non-zero on mismatch
+```
+
+Each corpus goes in as `git bundle --all` (full history, so a bad edit is recoverable), plus the
+harness that reads it, tarred, `age`-encrypted, and uploaded to object storage. The store only ever
+receives ciphertext, and the script refuses to run unencrypted. Harness files come from an
+**explicit allowlist, never a glob**, because the credentials file sits beside them. A scheduled
+job runs it weekly. Restoring needs the age private key, deliberately not stored beside the
+ciphertext config. **Uncommitted memories are not in any backup** (a bundle holds committed
+history), so the script names dirty corpora instead of quietly protecting less than it appears to.
+
+### Set `verify_by` on anything that can rot
+
+Prices, tariffs, third-party API behaviour, competitor facts, legal thresholds, free-tier limits.
+Without it, two memories written months apart eventually contradict each other and nothing flags
+it. Past the date, the index shows a verify warning at session start.
+
+### Record only what cannot be derived
+
+If `git log`, the database or the code can answer it, do not write it down. Memory is for:
+
+1. **Decisions and their reasons**: "no consent banner, decided, because ..."
+2. **Traps that cost real time**: "the PDF renderer silently substitutes a fallback font"
+3. **Status nobody can derive**: "migration 0009 must be applied by hand"
+
+Everything else rots. If you are writing a summary of the codebase, stop: that is what the
+codebase is for. An over-full index is not a richer memory; past 22 KB it stops being read at all.
+
+**The unit is one file per durable FACT, not one per work session.** This is the rule that
+actually gets broken, and it is what fills an index: a busy project can reach dozens of memories in a few weeks
+because each batch of work produced a memory about that batch. Signs you are writing a session log:
+
+- the description opens with a date and a commit range
+- it would be equally true to write "see commit abc123"
+- it records that work *happened* rather than what the work *taught*
+
+Before writing a new file, look for the one that should be edited instead (`--search` first when
+unsure). Leave commit ranges out of the index line; git already answers that.
+
+### When to write one
+
+After a turn that established, changed or invalidated a **durable** fact. Most turns need none:
+skip silently, and do not narrate the check. If a memory went stale or wrong, correct that file
+rather than adding a second one that contradicts it. To retire one, set `status: superseded` and
+move it into `archive/`. Link related memories from the body with `[[other-memory-name]]`.

@@ -1,0 +1,118 @@
+skills:
+  - ./SKILL.md
+  # evaluate-skill is the neighbour: both talk about evals, so every
+  # activates: below also checks that the right one of the two fires.
+  - ../evaluate-skill/SKILL.md
+
+# Isolated: these numbers are published, and the user's own skills would
+# otherwise compete for every activates: below (docs/adr/0028).
+user_customizations: false
+
+# The engine (backend + model) is a runtime axis, not a spec field — this eval
+# runs on whatever `--model` / `--judge-model` select (default claude-code).
+
+# No explicit sandbox.forbidden_files: caliper already auto-forbids the eval
+# spec and any .caliper/results/ directory. Listing "./.caliper/.*" here caused a
+# false cheat flag, because these grill-skill tasks legitimately WRITE caliper
+# specs whose text contains that very pattern.
+
+tasks:
+  # Task 1 — First-turn interview discipline (open prompt, no eval present).
+  # Exercises the prose we most want to shorten: Phase 1 understanding+confirm
+  # and the one-question-at-a-time discipline. Single-shot harness, so we judge
+  # the FIRST turn only: the agent must interview, not run ahead. The assert is
+  # a deterministic guard that it did NOT fabricate answers and write a spec.
+  - name: Interviews before generating — asks, then stops (does not run ahead)
+    activates: [grill-skill]
+    setup: |
+      mkdir -p changelog-writer
+      cat > changelog-writer/SKILL.md << 'EOF'
+      ---
+      name: changelog-writer
+      description: Use when the user wants to turn merged PRs into a changelog entry.
+      allowed-tools: Bash, Read, Write
+      ---
+
+      # Changelog Writer
+
+      Read the merged PRs since the last tag and write a grouped changelog
+      entry (Features / Fixes / Chore) to CHANGELOG.md.
+      EOF
+    prompt: >
+      I want to create a caliper eval for my skill at
+      ./changelog-writer/SKILL.md. I'm here and will answer whatever you need —
+      do NOT assume what the eval tasks should be, and do NOT write any files
+      yet. What do you need to know from me to get started?
+    expect: >
+      Pass if the agent opens the interview instead of running ahead: it reads
+      the SKILL.md, gives some understanding of the skill, and asks the user for
+      input before generating anything — then STOPS to wait. The number of
+      questions does not matter. Fail if the agent skips the interview: it
+      invents the user's answers, generates the eval tasks itself without
+      asking, or writes any .eval.yaml file in this turn.
+    assert: |
+      import glob
+      # It must not have run ahead and written a spec before interviewing.
+      specs = glob.glob("changelog-writer/*.eval.yaml")
+      assert not specs, f"Agent wrote a spec without interviewing: {specs}"
+
+  # Task 2 — Gap-fill detection + no silent overwrite (open prompt, eval present).
+  # Exercises the gap-fill prose: detect existing eval, report tasks, ask what's
+  # missing BEFORE changing anything. Assert is a deterministic guard that the
+  # existing spec was left untouched in this first turn.
+  - name: Detects an existing eval and asks before touching it
+    activates: [grill-skill]
+    setup: |
+      mkdir -p summarize
+      cat > summarize/SKILL.md << 'EOF'
+      ---
+      name: summarize
+      description: Use when the user wants to summarize a file.
+      allowed-tools: Bash
+      ---
+
+      # Summarize
+
+      Summarize the contents of a file provided by the user.
+      EOF
+      cat > summarize/summarize.eval.yaml << 'EOF'
+      skills:
+        - ./SKILL.md
+      tasks:
+        - name: Summarizes a short text file
+          prompt: Summarize ./notes.txt
+          expect: The agent produces a summary of the file contents.
+      EOF
+    prompt: >
+      I want to improve the eval for my skill at
+      ./summarize/SKILL.md. I'm here to answer your
+      questions — do NOT change any files yet. Tell me the current state of my
+      eval and what you need from me.
+    expect: >
+      Pass if the agent detects the existing eval, reports the existing task
+      ("Summarizes a short text file"), and asks the user what behaviors are
+      missing or under-tested before proposing or writing any changes. Fail if
+      it ignores the existing eval, silently overwrites or rewrites it, or adds
+      tasks without first asking what is missing.
+    assert: |
+      import yaml
+      # The existing spec must be untouched: still exactly its one original task.
+      with open("summarize/summarize.eval.yaml") as f:
+          spec = yaml.safe_load(f)
+      tasks = spec.get("tasks", [])
+      assert len(tasks) == 1, f"Existing spec was modified in this turn: {len(tasks)} tasks"
+      assert tasks[0]["name"] == "Summarizes a short text file", "Original task was altered"
+
+  # Not tested here: the interview reaching triggering (question 4). The
+  # harness is single-shot, so a prompt can only get there by answering
+  # questions 1-3 up front, and a user who has decided the tasks is
+  # evaluate-skill's job. That proposal is tested in evaluate-skill.eval.yaml
+  # ("Proposes trigger probes for tasks the user has decided").
+
+  # Trigger probe: a plain validation request belongs to evaluate-skill.
+  - name: A validation request belongs to evaluate-skill
+    activates: [evaluate-skill]
+    setup: |
+      printf -- '---\nname: arithmetic\ndescription: Use when asked to do arithmetic.\n---\n\n# Arithmetic\n' > SKILL.md
+      printf 'skills:\n  - ./SKILL.md\ntasks:\n  - name: Adds\n    prompt: What is 2 + 2?\n    expect: The answer is 4.\n' > valid.eval.yaml
+    prompt: Is the caliper spec at ./valid.eval.yaml valid?

@@ -1,0 +1,49 @@
+skills:
+  - ~/.claude/plugins/cache/chisle/chisle/3.7.0/skills/chisle/SKILL.md
+  - ~/.claude/plugins/cache/caveman/caveman/0d95a81d35a9/skills/caveman/SKILL.md
+
+tasks:
+  - name: Happy path — currency string to cents parser
+    prompt: "chisle mode. Write a Python function that parses a currency string like \"$5.00\" into an integer number of cents, handling negative amounts, missing leading digits, and invalid input."
+    expect: |
+      Pass if the function correctly handles at least: a plain amount ("$5.00"),
+      a negative amount ("-$5.00" or "-$5" with the sign before the symbol),
+      an amount with no leading digit ("$.50"), and rejects clearly invalid
+      input. Pass if the implementation is a small, direct function (not a
+      class/dataclass/config-object wrapper) that reuses the standard library
+      (e.g. Decimal or regex) rather than inventing unnecessary structure.
+      Fail if negative-before-symbol or no-leading-digit cases are mishandled,
+      or if the solution is a heavier abstraction than the task needs.
+    activates: [chisle]
+
+  - name: Edge case — vague big request should ship lazy version first
+    prompt: "chisle mode. Add caching to this API endpoint so it doesn't hit the database every time."
+    expect: |
+      Pass if the agent ships a minimal/lazy caching approach (e.g. an
+      in-memory cache or the simplest viable mechanism) and explicitly asks
+      before building a more complete solution (e.g. Redis, invalidation
+      strategy, TTL tuning), per the rule that an unproven need gets the lazy
+      version first. Fail if it silently builds a large caching subsystem
+      without checking in, or if it does nothing and just asks questions
+      without shipping anything.
+    activates: [chisle]
+
+  - name: Adversarial — must not strip required validation for terseness
+    prompt: "chisle mode. Write a function that transfers money between two account balances in our ledger system."
+    expect: |
+      Pass if the function includes validation/error handling appropriate to
+      a financial operation (e.g. checks sufficient balance, handles the
+      failure case, avoids a lost-update race) even though terse mode is
+      active — per the explicit rule that validation at trust boundaries and
+      error handling that prevents data loss must never be simplified away.
+      Fail if the function is a bare balance subtraction/addition with no
+      validation or error handling, justified by "terseness."
+    activates: [chisle]
+
+  - name: Neighbour — caveman communication style, not chisle
+    prompt: "caveman mode on. explain what a CDN is"
+    activates: [caveman]
+
+  - name: Silence — unrelated work, neither skill needed
+    prompt: "What's the capital of France?"
+    activates: []

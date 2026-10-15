@@ -1,0 +1,5 @@
+Portions of agents/, hooks/, rules/, commands/ and scripts/ are derived from
+everything-claude-code (https://github.com/affaan-m/everything-claude-code),
+Copyright (c) 2026 Affaan Mustafa, used under the MIT License (see LICENSE.ecc).
+Plugins, marketplaces and skills listed in plugins.txt and SKILLS.md belong to their respective
+authors and are installed from upstream, not redistributed here.

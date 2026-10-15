@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Weekly encrypted backup of every project's memory corpus.
+
+  A backup is only as good as its recency, and the one thing nobody remembers to do
+  by hand is the thing that only matters after the disk dies. Sundays 09:00; if the
+  Mac is asleep then, launchd runs it on the next wake rather than skipping the week.
+
+  Holds NO credentials — memory-backup.mjs reads those from ~/.claude/.env.memory-backup
+  at run time. PATH is set explicitly because launchd gives an agent a minimal
+  environment in which git, tar and age would not resolve.
+
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.example.memory-backup.plist  # disable
+    launchctl kickstart -k gui/$(id -u)/com.example.memory-backup                          # run now
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.memory-backup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>__HOME__/.claude/scripts/memory-backup.mjs</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/.claude/logs/memory-backup.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.claude/logs/memory-backup.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

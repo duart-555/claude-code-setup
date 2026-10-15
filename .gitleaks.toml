@@ -1,0 +1,10 @@
+# Allowlist for reviewed false positives. Everything else is scanned normally.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documentation placeholders and public on-chain token addresses"
+paths = [
+  '''skills/api-design/SKILL.md''',
+  '''skills/web3-polymarket/bridge\.md''',
+]

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Weekly automatic archiving of every project's memory index.
+
+  MEMORY.md is the only memory that loads automatically and it has a hard ceiling.
+  Past it the index stops being read and EVERY memory becomes unreachable at once —
+  a cliff, not a slope. A SessionStart hook already warns at 17 KB; the largest project
+  corpus then sat at 18.8 KB for a week with that warning firing every session,
+  which is the whole argument for automating the response rather than the alert.
+
+  Sundays 09:30 — deliberately AFTER the 09:00 memory-backup, so a week's backup
+  always captures the corpus as it was before that week's archiving. If the Mac is
+  asleep, launchd runs it on the next wake rather than skipping the week.
+
+  The script archives, never deletes: files move to archive/, which costs no index
+  bytes but stays reachable via `memory-index.mjs --search`. It skips live-state
+  memories, user/feedback types, anything under 30 days, and anything carrying
+  `pin: true`. Every run is one git commit, so `git revert` undoes it whole.
+
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.example.memory-autoarchive.plist  # disable
+    launchctl kickstart -k gui/$(id -u)/com.example.memory-autoarchive                          # run now
+    node ~/.claude/scripts/memory-autoarchive.mjs --dry-run --verbose                              # preview
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.memory-autoarchive</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>__HOME__/.claude/scripts/memory-autoarchive.mjs</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- launchd gives an agent a minimal environment; git would not resolve. -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/.claude/logs/memory-autoarchive.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.claude/logs/memory-autoarchive.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
