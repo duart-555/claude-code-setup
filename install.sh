@@ -71,4 +71,4 @@ if [ "$DO_MCP" = 1 ]; then
     done
 fi
 
-echo "done. Next: ./tools/prereqs.sh (CLIs), optionally ./tools/install-schedules.sh. Restart Claude Code. Backups: $BACKUP"
+echo "done. Next: ./tools/prereqs.sh (CLIs), optionally ./tools/install-schedules.sh and ./tools/install-crawl4ai.sh. Restart Claude Code. Backups: $BACKUP"

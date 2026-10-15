@@ -17,6 +17,7 @@ git clone https://github.com/duart-555/claude-code-setup.git && cd claude-code-s
 ./install.sh                  # files + marketplaces + plugins + keyless MCP servers
 ./tools/prereqs.sh            # CLIs: bun, gbrain, ollama(+embeddings), skillspector, caliper, ...
 ./tools/install-schedules.sh        # optional, macOS: memory backup/archive/health jobs
+./tools/install-crawl4ai.sh         # optional: Crawl4AI in Docker, auto-restarting (for the c4ai-sse MCP)
 ```
 
 Needs `jq`, `node` 20+, `git` and the `claude` CLI. The installer backs up what it replaces to
@@ -40,7 +41,7 @@ Flags: `--dry-run`, `--no-plugins`, `--no-mcp`.
 | `CLAUDE.md.example` | Portable global instructions (no personal content): memory layers, 95% rule, effort triage, GSD vs superpowers, agent/MCP triage, memory contract |
 | `launchd/` | macOS job templates: weekly memory backup + archive, daily health report, nightly gbrain consolidation |
 | `evals/` | Caliper spec for the chisle skill |
-| `tools/` | `prereqs.sh`, `install-schedules.sh` |
+| `tools/` | `prereqs.sh`, `install-schedules.sh`, `install-crawl4ai.sh` |
 
 ## The memory system
 
@@ -60,7 +61,7 @@ Keyless MCP servers are registered automatically. These are skipped until you ed
 `mcp-servers.json` and run `claude mcp add-json <name> '<json>' -s user`:
 
 - `magic` (21st.dev): `API_KEY`
-- `c4ai-sse` (Crawl4AI): `Authorization` header, plus a local Crawl4AI container on `:11235`
+- `c4ai-sse` (Crawl4AI): `Authorization` header, plus the Crawl4AI container (see below)
 - `mobbin`, `greptile`: registered automatically; sign in on first use via `/mcp`
 
 Memory backup (optional) needs `~/.claude/.env.memory-backup`; start from
@@ -68,6 +69,24 @@ Memory backup (optional) needs `~/.claude/.env.memory-backup`; start from
 
 Always pass `-s user` to `claude mcp add`; without it a server is tied to the directory it was
 added from.
+
+## Crawl4AI in Docker, running automatically
+
+The `c4ai-sse` MCP server talks to a local [Crawl4AI](https://github.com/unclecode/crawl4ai)
+container. In this setup it runs permanently in Docker: the container is created with
+`--restart unless-stopped`, Docker Desktop starts at login, so Crawl4AI is simply always there and
+no one has to start it.
+
+```bash
+./tools/install-crawl4ai.sh
+```
+
+It pulls `unclecode/crawl4ai`, runs it on `127.0.0.1:11235` with 1 GB of shared memory, a generated
+API token and the restart policy above, then prints the `claude mcp add-json` line to register it.
+Re-running it is safe. Needs Docker running. Crawl4AI is a fallback target, not a default: the
+instructions in `CLAUDE.md.example` use plain `WebFetch` unless a task needs a whole-site crawl, a
+JS-rendered page, structured extraction, or a screenshot/PDF, and fall back to `WebFetch` when the
+container is unreachable.
 
 ## Review before trusting
 
