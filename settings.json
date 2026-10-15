@@ -115,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/memory-check.mjs\"",
+            "command": "node \"$HOME/.claude/hooks/memory-check.mjs\"",
             "timeout": 5,
             "statusMessage": "Checking memory..."
           }
@@ -125,7 +125,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"~/.claude/hooks/context-mode-cache-heal.mjs\""
+            "command": "\"$HOME/.claude/hooks/context-mode-cache-heal.mjs\""
           }
         ]
       },
@@ -133,7 +133,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/scripts/context-mode-patch.mjs\" --quiet",
+            "command": "node \"$HOME/.claude/scripts/context-mode-patch.mjs\" --quiet",
             "timeout": 10,
             "statusMessage": "Checking context-mode patches..."
           }
@@ -161,7 +161,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-check-update.js\""
+            "command": "node \"$HOME/.claude/hooks/gsd-check-update.js\""
           }
         ]
       },
@@ -169,7 +169,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"~/.claude/hooks/gsd-session-state.sh\""
+            "command": "bash \"$HOME/.claude/hooks/gsd-session-state.sh\""
           }
         ]
       },
@@ -210,7 +210,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-context-monitor.js\"",
             "timeout": 10
           }
         ]
@@ -220,7 +220,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-read-injection-scanner.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-read-injection-scanner.js\"",
             "timeout": 5
           }
         ]
@@ -230,7 +230,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"~/.claude/hooks/gsd-graphify-update.sh\"",
+            "command": "bash \"$HOME/.claude/hooks/gsd-graphify-update.sh\"",
             "timeout": 5
           }
         ]
@@ -240,7 +240,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"~/.claude/hooks/gsd-phase-boundary.sh\"",
+            "command": "bash \"$HOME/.claude/hooks/gsd-phase-boundary.sh\"",
             "timeout": 5
           }
         ]
@@ -339,7 +339,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-prompt-guard.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-prompt-guard.js\"",
             "timeout": 5
           }
         ]
@@ -349,7 +349,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-read-guard.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-read-guard.js\"",
             "timeout": 5
           }
         ]
@@ -359,7 +359,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-workflow-guard.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-workflow-guard.js\"",
             "timeout": 5
           }
         ]
@@ -369,7 +369,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-worktree-path-guard.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-worktree-path-guard.js\"",
             "timeout": 5
           }
         ]
@@ -379,7 +379,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"~/.claude/hooks/gsd-validate-commit.sh\"",
+            "command": "bash \"$HOME/.claude/hooks/gsd-validate-commit.sh\"",
             "timeout": 5
           }
         ]
@@ -389,7 +389,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/dash-path-guard.mjs\"",
+            "command": "node \"$HOME/.claude/hooks/dash-path-guard.mjs\"",
             "timeout": 5,
             "statusMessage": "Checking argument shape..."
           }
@@ -474,7 +474,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-context-monitor.js\"",
             "timeout": 10
           }
         ]
@@ -493,7 +493,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"~/.claude/hooks/memory-auto-capture.mjs\" post-tool-throttled",
+            "command": "node \"$HOME/.claude/hooks/memory-auto-capture.mjs\" post-tool-throttled",
             "timeout": 130,
             "async": true
           }
@@ -514,7 +514,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-context-monitor.js\"",
             "timeout": 10
           }
         ]
@@ -523,7 +523,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"~/.claude/hooks/memory-auto-capture.mjs\" pre-compact",
+            "command": "node \"$HOME/.claude/hooks/memory-auto-capture.mjs\" pre-compact",
             "timeout": 130,
             "async": true
           }
@@ -545,7 +545,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"~/.claude/hooks/memory-recall-on-failure.mjs\"",
+            "command": "node \"$HOME/.claude/hooks/memory-recall-on-failure.mjs\"",
             "timeout": 10
           }
         ]
@@ -586,7 +586,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"~/.claude/hooks/memory-auto-capture.mjs\"",
+            "command": "node \"$HOME/.claude/hooks/memory-auto-capture.mjs\"",
             "timeout": 130,
             "async": true
           }
@@ -598,7 +598,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-context-monitor.js\"",
             "timeout": 10
           }
         ]
@@ -619,7 +619,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/homebrew/bin/node\" \"~/.claude/hooks/gsd-config-reload.js\"",
+            "command": "node \"$HOME/.claude/hooks/gsd-config-reload.js\"",
             "timeout": 8
           }
         ]
@@ -695,7 +695,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash \"~/.claude/hooks/caveman-statusline.sh\""
+    "command": "bash \"$HOME/.claude/hooks/caveman-statusline.sh\""
   },
   "permissions": {
     "deny": [
@@ -716,6 +716,37 @@
       "Read(.secrets)",
       "Read(~/.env)"
     ],
-    "ask": []
+    "ask": [],
+    "allow": [
+      "Bash(git diff:*)",
+      "Bash(pip list:*)",
+      "Bash(pip show:*)",
+      "Bash(pip3 list:*)",
+      "Bash(pip3 show:*)",
+      "Bash(systemctl is-active:*)",
+      "Bash(systemctl is-enabled:*)",
+      "Bash(systemctl list-units:*)",
+      "Bash(systemctl status:*)",
+      "Edit(.planning/*)",
+      "Edit(STATE.md)",
+      "Read(.planning/*)",
+      "Read(STATE.md)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:gitlab.com)"
+    ]
+  },
+  "modelSettings": {
+    "claude-sonnet-5": {
+      "effortLevel": "high"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    }
+  },
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true,
+  "skipWorkflowUsageWarning": true,
+  "env": {
+    "GATEGUARD_EXEMPT_GLOBS": "**/.claude/plans/**,**/scratchpad/**,**/claude-501/**,/tmp/**,**/*.test.*,**/*.spec.*,**/*.md"
   }
 }

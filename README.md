@@ -32,6 +32,7 @@ Flags: `--dry-run`, `--no-plugins`, `--no-mcp`.
 |---|---|
 | `agents/` | 61 subagents: planner, architect, code / security / database / language reviewers, build resolvers, TDD guide, and the `gsd-*` phase agents |
 | `skills/` | 154 skills: 48 engineering (ECC), 71 `gsd-*`, 13 design-taste, 6 web-quality, 3 Caliper, `last30days`, `ui-ux-pro-max`, `stop-slop`, anti-slop, 5 hand-authored (brainstorming, systematic-debugging, verification-before-completion, receiving-code-review, memory-audit), and 4 **without a confirmed upstream license** (see `SKILLS.md`) |
+| `gsd-core/` | Runtime for the `gsd-*` skills and agents (workflows, templates, references, `gsd-tools`). Installed to `~/.claude/gsd-core`; the skills call it by that path |
 | `hooks/`, `scripts/` | Hook implementations and libraries: dash-path guard, memory auto-capture, recall-on-failure, session tracking, quality gates, memory generator/backup/archive with tests |
 | `rules/` | Always-on rules: coding style, testing, security, git workflow, review standards |
 | `commands/` | 23 slash commands |
@@ -41,7 +42,7 @@ Flags: `--dry-run`, `--no-plugins`, `--no-mcp`.
 | `CLAUDE.md.example` | Portable global instructions (no personal content): memory layers, 95% rule, effort triage, GSD vs superpowers, agent/MCP triage, memory contract |
 | `launchd/` | macOS job templates: weekly memory backup + archive, daily health report, nightly gbrain consolidation |
 | `evals/` | Caliper spec for the chisle skill |
-| `tools/` | `prereqs.sh`, `install-schedules.sh`, `install-crawl4ai.sh` |
+| `tools/` | `prereqs.sh` (bun, gbrain, ollama + embeddings, skillspector, caliper, code-review-graph, age, ripgrep, yt-dlp, opencli, mcporter, vercel, agent-reach CLIs), `install-schedules.sh`, `install-crawl4ai.sh` |
 
 ## The memory system
 
@@ -87,6 +88,25 @@ Re-running it is safe. Needs Docker running. Crawl4AI is a fallback target, not 
 instructions in `CLAUDE.md.example` use plain `WebFetch` unless a task needs a whole-site crawl, a
 JS-rendered page, structured extraction, or a screenshot/PDF, and fall back to `WebFetch` when the
 container is unreachable.
+
+## Small settings that matter
+
+These live outside the files above, so set them yourself:
+
+- **claude-mem** (`~/.claude-mem/settings.json`): `CLAUDE_MEM_PROVIDER=claude`,
+  `CLAUDE_MEM_CLAUDE_AUTH_METHOD=subscription` (summaries go through your existing Claude login, not
+  a separate API key), `CLAUDE_MEM_RUNTIME=worker`, `CLAUDE_MEM_MODE=code`.
+- **gbrain** (`~/.gbrain/config.json`): `engine: pglite`, `embedding_model: ollama:mxbai-embed-large`,
+  `embedding_dimensions: 1024`. Pull the model with `ollama pull mxbai-embed-large`
+  (`tools/prereqs.sh` does it). Mixing 768-dim and 1024-dim embedding models fails with a dimension
+  mismatch, so pick one.
+- **Claude in Chrome**: install the extension, then `alias claude='claude --chrome'` in your shell
+  profile.
+- **Auto mode** is not enabled by this repo (`defaultMode` is unset). If you turn it on, write your
+  own `autoMode.environment` describing your repos and domains; the author's is project-specific and
+  deliberately not shared.
+- **Permissions**: only a small generic allow-list is shipped. Your own `allow` rules will grow
+  with use.
 
 ## Review before trusting
 

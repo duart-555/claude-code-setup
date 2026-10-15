@@ -26,7 +26,7 @@ BACKUP="$DEST/backup-before-setup-$STAMP"
 
 # 1. Files. Existing files are backed up, then replaced; anything not in this repo is left alone.
 echo "== files -> $DEST"
-for d in agents hooks rules commands contexts scripts skills; do
+for d in agents hooks rules commands contexts scripts skills gsd-core; do
   [ -d "$HERE/$d" ] || continue
   run mkdir -p "$DEST/$d"
   if [ -d "$DEST/$d" ] && [ "$(ls -A "$DEST/$d" 2>/dev/null | wc -l)" -gt 0 ]; then
