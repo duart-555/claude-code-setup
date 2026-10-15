@@ -16,6 +16,7 @@ git clone https://github.com/duart-555/claude-code-setup.git && cd claude-code-s
 ./install.sh --dry-run        # show what it will do
 ./install.sh                  # files + marketplaces + plugins + keyless MCP servers
 ./tools/prereqs.sh            # CLIs: bun, gbrain, ollama(+embeddings), skillspector, caliper, ...
+                              # (bootstraps its own toolchain; tested from a bare Ubuntu 24.04; --core for the minimum)
 ./tools/install-schedules.sh        # optional, macOS: memory backup/archive/health jobs
 ./tools/install-crawl4ai.sh         # optional: Crawl4AI in Docker, auto-restarting (for the c4ai-sse MCP)
 ```
