@@ -12,7 +12,7 @@ No secrets, API keys, hostnames or personal data are in this repo. Every credent
 ## Quick start
 
 ```bash
-git clone https://github.com/<you>/claude-code-setup.git && cd claude-code-setup
+git clone https://github.com/duart-555/claude-code-setup.git && cd claude-code-setup
 ./install.sh --dry-run        # show what it will do
 ./install.sh                  # files + marketplaces + plugins + keyless MCP servers
 ./tools/prereqs.sh            # CLIs: bun, gbrain, ollama(+embeddings), skillspector, caliper, ...
